@@ -1,0 +1,7 @@
+# Mengabaikan folder logs dan isinya
+logs/
+*.log
+
+# Mengabaikan file cache Python
+__pycache__/
+*.pyc
