@@ -89,30 +89,32 @@ def build_report(stats, results, duration_sec):
     lines = []
     width = 65
     
-    lines.append("=" * width)
-    lines.append(f" Total Data  : {total} (ON: {total_on} | OFF: {total_off})")
+    lines.append(f" Total Data   : {total} (ON: {total_on} | OFF: {total_off})")
     if stats['invalid_data'] > 0:
-        lines.append(f" Invalid Data: {stats['invalid_data']} baris diabaikan")
-    lines.append("=" * width)
-    
-    lines.append(f" ONLINE      : {on_count}")
-    lines.append(f" OFFLINE     : {off_count}")
-    lines.append(f" DURASI      : {duration_sec:.2f} Detik")
-    lines.append(f" HEALTH      : {percentage:.2f}% [{health_label}]")
+        lines.append(f" Invalid Data : {stats['invalid_data']} baris diabaikan")
+    lines.append("-" * width)
+    lines.append(f" ONLINE       : {on_count}")
+    lines.append(f" OFFLINE      : {off_count}")
+    lines.append(f" DURASI       : {duration_sec:.2f} Detik")
+    lines.append(f" HEALTH       : {percentage:.2f}% [{health_label}]")
     lines.append("=" * width)
     
     if config.SHOW_GROUP_SUMMARY and grub_stats:
-        lines.append(" RINGKASAN GRUB:")
+        lines.append("[ RINGKASAN GRUB ]".center(width))
+        lines.append("=" * width)
         for g_name, g_data in sorted(grub_stats.items()):
             g_pct = (g_data['online'] / g_data['total']) * 100
-            lines.append(f" - {g_name:<15} : {g_data['online']}/{g_data['total']} Online ({g_pct:.0f}%)")
+            # Formating agar angka rata kanan rapi
+            lines.append(f" * {g_name:<16} : {g_data['online']:>2}/{g_data['total']:<2} Online ({g_pct:>3.0f}%)")
         lines.append("=" * width)
         
     if config.SHOW_OFFLINE_DETAIL and off_count > 0:
-        lines.append(" DETAIL CCTV OFFLINE:")
+        lines.append("[ DETAIL CCTV OFFLINE ]".center(width))
+        lines.append("=" * width)
         for idx, cam in enumerate(offline_cams, 1):
             lines.append(f" {idx:02d}. [{cam['grub']}] {cam['nama']}")
-            lines.append(f"     IP: {cam['ip']} | NVR: {cam['nvr']} | Lokasi: {cam['lokasi']}")
+            # Simbol L untuk visualisasi struktur data yang lebih modern
+            lines.append(f"     └─ IP: {cam['ip']} | NVR: {cam['nvr']} | Lok: {cam['lokasi']}")
         lines.append("=" * width)
         
     return "\n".join(lines)
