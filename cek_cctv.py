@@ -5,26 +5,13 @@ import monitor
 import logger
 import sys
 import time
-from colorama import Fore, Style
+import asyncio
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
-def print_colored_report(report_string):
-    # Menyuntikkan warna pada Terminal agar lebih cantik tanpa merusak log murni
-    for line in report_string.split("\n"):
-        if "HEALTH" in line:
-            if "EXCELLENT" in line or "GOOD" in line:
-                line = line.replace("[", f"[{Fore.GREEN}{Style.BRIGHT}").replace("]", f"{Style.RESET_ALL}]")
-            elif "WARNING" in line:
-                line = line.replace("[", f"[{Fore.YELLOW}{Style.BRIGHT}").replace("]", f"{Style.RESET_ALL}]")
-            else:
-                line = line.replace("[", f"[{Fore.RED}{Style.BRIGHT}").replace("]", f"{Style.RESET_ALL}]")
-        elif "ONLINE" in line and "OFFLINE" not in line:
-            line = line.replace("ONLINE", f"{Fore.GREEN}ONLINE{Style.RESET_ALL}")
-        elif "OFFLINE" in line:
-            line = line.replace("OFFLINE", f"{Fore.RED}OFFLINE{Style.RESET_ALL}")
-        
-        print(line)
+console = Console()
 
-def main():
+async def main():
     utils.clear_screen()
     utils.pre_flight_check()
     
@@ -32,56 +19,58 @@ def main():
         utils.clear_screen()
         utils.print_banner()
         
-        print(Fore.YELLOW + " [*] Mendownload data dari Google Sheets..." + Style.RESET_ALL)
+        console.print("[yellow] [*] Mendownload data dari Google Sheets...[/yellow]")
         sheet = google_sheet.GoogleSheet()
         
         if not sheet.download():
-            print(Fore.RED + " [!] Gagal mengunduh data. Periksa koneksi internet." + Style.RESET_ALL)
+            console.print("[red] [!] Gagal mengunduh data. Periksa koneksi internet.[/red]")
             sys.exit(1)
             
         stats = sheet.get_statistics()
         active_cams = sheet.get_active_cameras()
         
-        print(Fore.GREEN + f" [✓] Sinkronisasi Selesai. Total Status ON: {stats['aktif']}" + Style.RESET_ALL)
-        print("-" * 65)
+        console.print(f"[green] [✓] Sinkronisasi Selesai. Total Status ON: {stats['aktif']}[/green]")
+        console.print("-" * 65)
         
         if not active_cams:
-            print(Fore.YELLOW + " [!] Tidak ada CCTV berstatus ON untuk diping." + Style.RESET_ALL)
+            console.print("[yellow] [!] Tidak ada CCTV berstatus ON untuk diping.[/yellow]")
         else:
             start_time = time.time()
             
-            def progress_handler(current, total):
-                utils.print_progress(current, total)
-                
-            results = monitor.run_monitoring(active_cams, progress_callback=progress_handler)
+            # Using rich Live dashboard
+            from rich.live import Live
+            with Live(utils.generate_live_dashboard(0, len(active_cams), 0, 0), console=console, refresh_per_second=10) as live:
+                def progress_handler(current, total, online, offline):
+                    live.update(utils.generate_live_dashboard(current, total, online, offline))
+                    
+                results = await monitor.run_monitoring_async(active_cams, progress_callback=progress_handler)
             
             duration = time.time() - start_time
             
-            # 1. Bangun 1 laporan murni
+            # 1. Bangun laporan murni untuk log
             report_string = utils.build_report(stats, results, duration)
             
             utils.clear_screen()
             utils.print_banner()
             
-            # 2. Tampilkan dengan warna di terminal
-            print_colored_report(report_string)
+            # 2. Tampilkan laporan dengan Rich Table
+            utils.print_rich_report(stats, results, duration)
                     
             # 3. Simpan format polos ke log file
             log_file = logger.save_log(report_string)
             if log_file:
-                print(Fore.CYAN + f" [i] Log tersimpan di : {log_file}" + Style.RESET_ALL)
-                print("=" * 65)
+                console.print(f"[cyan] [i] Log tersimpan di : {log_file}[/cyan]")
+                console.print("=" * 65)
         
         # 4. Pertanyaan Looping
         print("\n")
-        choice = input(Fore.YELLOW + Style.BRIGHT + " [?] Apakah Anda ingin mengecek ulang? (y/n): " + Style.RESET_ALL).strip().lower()
+        choice = console.input("[yellow bold] [?] Apakah Anda ingin mengecek ulang? (y/n): [/yellow bold]").strip().lower()
         if choice != 'y':
-            print(Fore.GREEN + "\n [✓] Terima kasih telah menggunakan CCTV Monitor, Sampai jumpa!" + Style.RESET_ALL)
             break
 
 if __name__ == "__main__":
     try:
-        main()
+        asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n\n" + Fore.RED + "[!] Proses dihentikan oleh pengguna." + Style.RESET_ALL)
+        console.print("\n\n[red][!] Proses dihentikan oleh pengguna.[/red]")
         sys.exit(0)
