@@ -202,20 +202,11 @@ def print_rich_report(stats, results, duration_sec):
                 f"{g_data['online']}/{g_data['total']} ({g_pct:>3.0f}%) {icon}"
             )
             
-    # Responsive Side by side panel
-    layout = Table.grid(expand=True)
-    # Gunakan ratio agar otomatis membelah 50:50 pada layar besar, 
-    # namun Rich akan mengaturnya jika layarnya sempit.
-    layout.add_column(ratio=1)
-    layout.add_column(ratio=1)
+    # Render Panels Vertically
+    console.print(Panel(summary_table, title="Final Report", border_style="cyan"))
     
-    group_panel = Panel(group_table, title="Group Summary", border_style="cyan") if grub_stats else ""
-    layout.add_row(
-        Panel(summary_table, title="Final Report", border_style="cyan"),
-        group_panel
-    )
-    
-    console.print(layout)
+    if config.SHOW_GROUP_SUMMARY and grub_stats:
+        console.print(Panel(group_table, title="Group Summary", border_style="cyan"))
     
     if config.SHOW_OFFLINE_DETAIL and off_count > 0:
         offline_table = Table.grid(padding=(0, 2))
@@ -225,7 +216,7 @@ def print_rich_report(stats, results, duration_sec):
         for idx, cam in enumerate(offline_cams, 1):
             offline_table.add_row(
                 f"{idx:02d}.",
-                f"[{cam['grub']}] {cam['nama']}\n[dim]└─ IP: {cam['ip']} | NVR: {cam['nvr']} | Lok: {cam['lokasi']}[/dim]\n"
+                f"[{cam['grub']}] {cam['nama']}\n[dim]└─ IP: [bold red]{cam['ip']}[/bold red] | NVR: {cam['nvr']} | Lok: {cam['lokasi']}[/dim]\n"
             )
             
         console.print(Panel(offline_table, title=f"[bold red]CCTV OFFLINE ({off_count})[/bold red]", border_style="red"))
