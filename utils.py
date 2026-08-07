@@ -183,14 +183,11 @@ def print_rich_report(stats, results, duration_sec):
     summary_table.add_row("ONLINE", f"[green]{on_count}[/green]")
     summary_table.add_row("OFFLINE", f"[red]{off_count}[/red]")
     summary_table.add_row("DURASI", f"{duration_sec:.2f} Detik")
-    
-    health_color = "green" if percentage >= config.HEALTH_GOOD else "yellow" if percentage >= config.HEALTH_WARNING else "red"
-    summary_table.add_row("HEALTH", f"[{health_color}]{percentage:.2f}% [{health_label}][/{health_color}]")
-    
     # Table 2: Group Summary
     group_table = Table(show_header=False, box=None, padding=(0, 2))
     group_table.add_column("Group")
-    group_table.add_column("Status")
+    group_table.add_column("Status", justify="right")
+    group_table.add_column("Icon", justify="center")
     
     if config.SHOW_GROUP_SUMMARY and grub_stats:
         for g_name, g_data in sorted(grub_stats.items()):
@@ -199,7 +196,8 @@ def print_rich_report(stats, results, duration_sec):
             icon = "🟢" if color == "green" else "🟡" if color == "yellow" else "🔴"
             group_table.add_row(
                 f"* {g_name}", 
-                f"{g_data['online']}/{g_data['total']} ({g_pct:>3.0f}%) {icon}"
+                f"{g_data['online']}/{g_data['total']} ({g_pct:>3.0f}%)",
+                icon
             )
             
     # Render Panels Vertically
@@ -208,7 +206,9 @@ def print_rich_report(stats, results, duration_sec):
     if config.SHOW_GROUP_SUMMARY and grub_stats:
         console.print(Panel(group_table, title="Group Summary", border_style="cyan"))
     
-    if config.SHOW_OFFLINE_DETAIL and off_count > 0:
+    if off_count == 0:
+        console.print(Panel(Align.center("[bold green]SEMUA KAMERA ONLINE ✔[/bold green]"), border_style="green"))
+    elif config.SHOW_OFFLINE_DETAIL and off_count > 0:
         offline_table = Table.grid(padding=(0, 2))
         offline_table.add_column("No", justify="right")
         offline_table.add_column("Detail")
